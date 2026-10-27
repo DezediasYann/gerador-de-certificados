@@ -114,6 +114,37 @@ jobs:
           rm -f tauri-key-test.txt tauri-key-test.txt.sig
         shell: bash
 
+      # ━━ Extrair changelog da versão atual do CHANGELOG.md ━━
+      # Lê o arquivo CHANGELOG.md, encontra a seção "## [vX.Y.Z]" correspondente
+      # à tag atual e salva em $GITHUB_ENV para usar como releaseBody.
+      - name: Extrair changelog da versão
+        run: |
+          TAG="${{ github.ref_name }}"
+          echo "Tag atual: $TAG"
+          if [ ! -f CHANGELOG.md ]; then
+            echo "⚠️ CHANGELOG.md não encontrado — usando body padrão"
+            echo "RELEASE_BODY=Veja as mudanças em https://github.com/DezediasYann/gerador-de-certificados/blob/main/CHANGELOG.md" >> $GITHUB_ENV
+            exit 0
+          fi
+          # Extrai da linha "## [vX.Y.Z]" até o próximo "## [" (exclusive)
+          # Usa index() (string match) em vez de regex para evitar problemas com []
+          BODY=$(awk -v tag="## [${TAG}]" '
+            index($0, tag) == 1 { found=1; next }
+            found && index($0, "## [") == 1 { exit }
+            found { print }
+          ' CHANGELOG.md)
+          if [ -z "$BODY" ]; then
+            echo "⚠️ Seção ${TAG} não encontrada no CHANGELOG.md — usando body padrão"
+            echo "RELEASE_BODY=Veja as mudanças em https://github.com/DezediasYann/gerador-de-certificados/blob/main/CHANGELOG.md" >> $GITHUB_ENV
+          else
+            echo "✅ Changelog de ${TAG} extraído (${#BODY} caracteres)"
+            # Usa delimitador especial para preservar newlines no GITHUB_ENV
+            echo "RELEASE_BODY<<CHANGELOG_EOF" >> $GITHUB_ENV
+            echo "$BODY" >> $GITHUB_ENV
+            echo "CHANGELOG_EOF" >> $GITHUB_ENV
+          fi
+        shell: bash
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -122,7 +153,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Gerador de Certificados ${{ github.ref_name }}"
-          releaseBody: "Veja as mudanças abaixo."
+          releaseBody: ${{ env.RELEASE_BODY }}
           releaseDraft: false
           prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           updaterJsonPreferNsis: true

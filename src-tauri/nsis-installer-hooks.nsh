@@ -3,22 +3,27 @@
 ; O productName do Tauri é "GdC" (curto, safe para binário/instalador/URL do updater).
 ; Mas o atalho visível ao usuário deve ser "Gerador de Certificados" (com espaços).
 ;
-; O Tauri cria atalhos com o productName ("GdC.lnk"). Este hook:
-;   1. POSTINSTALL: remove "GdC.lnk" e cria "Gerador de Certificados.lnk"
-;   2. PREUNINSTALL: remove "Gerador de Certificados.lnk" na desinstalação
+; Variáveis NSIS do template oficial do Tauri 2:
+;   ${PRODUCTNAME}     → nome do produto ("GdC") — usado no nome do .lnk
+;   ${MAINBINARYNAME}  → nome do executável ("GdC") — usado no .exe
+;   $SMPROGRAMS        → pasta do menu Iniciar
+;   $DESKTOP           → área de trabalho
+;   $INSTDIR           → diretório de instalação
 
 ; Nome bonito do atalho (com espaços)
 !define APP_DISPLAY_NAME "Gerador de Certificados"
 
 ; ━━ Após instalar: recria atalhos com nome bonito ━━
+; O hook POSTINSTALL roda DEPOIS de CreateOrUpdateStartMenuShortcut e
+; CreateOrUpdateDesktopShortcut, então os atalhos "GdC.lnk" já existem.
 !macro NSIS_HOOK_POSTINSTALL
   ; Menu Iniciar: remove atalho padrão (GdC.lnk) e cria com nome bonito
-  Delete "$SMPROGRAMS\${PRODUCTFILENAME}.lnk"
-  CreateShortcut "$SMPROGRAMS\${APP_DISPLAY_NAME}.lnk" "$INSTDIR\${PRODUCTFILENAME}.exe"
+  Delete "$SMPROGRAMS\${PRODUCTNAME}.lnk"
+  CreateShortcut "$SMPROGRAMS\${APP_DISPLAY_NAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "" "$INSTDIR\${MAINBINARYNAME}.exe" 0
 
-  ; Desktop: se o Tauri criou atalho no desktop, renomeia também
-  Delete "$DESKTOP\${PRODUCTFILENAME}.lnk"
-  CreateShortcut "$DESKTOP\${APP_DISPLAY_NAME}.lnk" "$INSTDIR\${PRODUCTFILENAME}.exe"
+  ; Desktop: remove atalho padrão (se existir) e cria com nome bonito
+  Delete "$DESKTOP\${PRODUCTNAME}.lnk"
+  CreateShortcut "$DESKTOP\${APP_DISPLAY_NAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "" "$INSTDIR\${MAINBINARYNAME}.exe" 0
 !macroend
 
 ; ━━ Antes de desinstalar: remove os atalhos customizados ━━
