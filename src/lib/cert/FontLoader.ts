@@ -2,6 +2,7 @@
 // Cada família fica disponível para o CertificateEngine usar no canvas.
 import type { FontFamilyDescriptor, FontPair } from "./types";
 import { AVAILABLE_FONTS } from "./Catalogs";
+import type { CustomFont } from "./FontManager";
 
 export class FontLoader {
   private loaded = new Map<string, FontPair>();
@@ -12,7 +13,7 @@ export class FontLoader {
     return AVAILABLE_FONTS;
   }
 
-  /** Carrega (ou retorna do cache) uma família de fonte pelo nome interno. */
+  /** Carrega (ou retorna do cache) uma família de fonte bundled pelo nome interno. */
   async load(name: string): Promise<FontPair> {
     if (this.loaded.has(name)) return this.loaded.get(name)!;
     if (this.loading.has(name)) return this.loading.get(name)!;
@@ -31,7 +32,23 @@ export class FontLoader {
     }
   }
 
-  /** Carrega uma família a partir de um descritor. */
+  /** Carrega (ou retorna do cache) uma fonte customizada a partir de dataURLs. */
+  async loadCustom(custom: CustomFont): Promise<FontPair> {
+    if (this.loaded.has(custom.id)) return this.loaded.get(custom.id)!;
+    if (this.loading.has(custom.id)) return this.loading.get(custom.id)!;
+
+    const promise = this.loadCustomDescriptor(custom);
+    this.loading.set(custom.id, promise);
+    try {
+      const pair = await promise;
+      this.loaded.set(custom.id, pair);
+      return pair;
+    } finally {
+      this.loading.delete(custom.id);
+    }
+  }
+
+  /** Carrega uma família bundled a partir de um descritor. */
   private async loadDescriptor(desc: FontFamilyDescriptor): Promise<FontPair> {
     const family = `CertFont-${desc.name}`;
     const baseUrl = `/fonts/${desc.name}`;
@@ -39,6 +56,25 @@ export class FontLoader {
     const italicFace = new FontFace(family, `url(${baseUrl}/${desc.italicFile})`, {
       style: "italic",
     });
+    await Promise.all([regularFace.load(), italicFace.load()]);
+    document.fonts.add(regularFace);
+    document.fonts.add(italicFace);
+    return {
+      family,
+      regularFont: (size: number) => `${size}px "${family}"`,
+      italicFont: (size: number) => `italic ${size}px "${family}"`,
+    };
+  }
+
+  /** Carrega uma família customizada a partir de dataURLs. */
+  private async loadCustomDescriptor(custom: CustomFont): Promise<FontPair> {
+    const family = `CertFont-${custom.id}`;
+    const regularFace = new FontFace(family, `url(${custom.regularDataUrl})`);
+    const italicFace = new FontFace(
+      family,
+      `url(${custom.italicDataUrl ?? custom.regularDataUrl})`,
+      { style: "italic" },
+    );
     await Promise.all([regularFace.load(), italicFace.load()]);
     document.fonts.add(regularFace);
     document.fonts.add(italicFace);

@@ -33,11 +33,32 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
+      # ━━ Fix: converter a chave privada PEM (multi-linha) para base64 ━━
+      # O `tauri build` espera a chave em base64. Se passar o PEM cru, dá erro
+      # "Invalid symbol 32, offset 9" (espaço no cabeçalho PEM).
+      - name: Converter chave privada para base64
+        if: runner.os != 'Windows'
+        env:
+          SK: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          KEY_BASE64=$(printf '%s' "$SK" | base64 -w 0)
+          echo "TAURI_SIGNING_PRIVATE_KEY_B64=$KEY_BASE64" >> $GITHUB_ENV
+
+      - name: Converter chave privada para base64 (Windows)
+        if: runner.os == 'Windows'
+        env:
+          SK: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          $bytes = [System.Text.Encoding]::UTF8.GetBytes($env:SK)
+          $b64 = [System.Convert]::ToBase64String($bytes)
+          echo "TAURI_SIGNING_PRIVATE_KEY_B64=$b64" >> $env:GITHUB_ENV
+        shell: pwsh
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY_B64 }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Gerador de Certificados ${{ github.ref_name }}"

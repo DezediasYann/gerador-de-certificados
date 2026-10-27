@@ -74,13 +74,14 @@ export const useCertStore = create<CertState>((set, get) => ({
   useItalic: true,
   posX: 250,
   posY: 600,
-  // Assinatura
+  // Assinatura — posição padrão no canto inferior direito do template
+  // (2000×1414), onde assinaturas costumam ficar, em vez do centro.
   useSignature: false,
   signatureName: "",
   signatureUrl: null,
   signatureSize: 300,
-  signaturePosX: 1200,
-  signaturePosY: 700,
+  signaturePosX: 1450,
+  signaturePosY: 980,
   // Atualizações
   betaUpdates: false,
 

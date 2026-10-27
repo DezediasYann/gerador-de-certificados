@@ -53,14 +53,14 @@
   --background: oklch(0.97 0.006 75);          /* creme quente */
   --foreground: oklch(0.20 0.008 75);          /* quase-preto quente */
 
-  /* Vidro (glass) — painéis translúcidos */
-  --glass: oklch(1 0 0 / 0.65);                /* branco translúcido */
-  --glass-border: oklch(1 0 0 / 0.55);         /* borda refração */
-  --glass-strong: oklch(1 0 0 / 0.82);         /* vidro mais opaco */
+  /* Vidro (glass) — painéis translúcidos. No modo claro, mais opacos para legibilidade. */
+  --glass: oklch(1 0 0 / 0.82);                /* branco translúcido */
+  --glass-border: oklch(1 0 0 / 0.65);         /* borda refração */
+  --glass-strong: oklch(1 0 0 / 0.92);         /* vidro mais opaco */
 
-  --card: oklch(1 0 0 / 0.72);
+  --card: oklch(1 0 0 / 0.92);
   --card-foreground: var(--foreground);
-  --popover: oklch(1 0 0 / 0.92);
+  --popover: oklch(1 0 0 / 0.98);
   --popover-foreground: var(--foreground);
 
   /* Acentos (Golden Gate — âmbar/dourado) */

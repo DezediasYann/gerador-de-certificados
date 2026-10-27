@@ -91,22 +91,46 @@ Os binários instaláveis ficam em `src-tauri/target/release/bundle/` (`.msi`/`.
 
 ## Atualização OTA (GitHub Releases)
 
-Para que o OTA funcione, você precisa:
+> **Importante:** a configuração do OTA já inclui os 5 fixes para armadilhas comuns do Tauri 2 (productName safe, `createUpdaterArtifacts`, plataforma NSIS, chave em base64, crate `zip` yanked). Siga os passos abaixo para finalizar.
 
-1. **Criar o repositório GitHub:** `DezediasYann/gerador-de-certificados` (ou ajuste `GITHUB_REPO` em `src/lib/cert/Catalogs.ts`).
+### Passo a passo
+
+1. **Criar o repositório GitHub:** `DezediasYann/gerador-de-certificados` (ou ajuste `GITHUB_REPO` em `src/lib/cert/Catalogs.ts` e o `endpoint` em `src-tauri/tauri.conf.json`).
 
 2. **Gerar o par de chaves de assinatura** (uma única vez):
    ```bash
    bun run tauri signer generate -w ~/.tauri/gerador-certs.key
    ```
-   - Guarde a **chave privada** com segurança (nunca no repositório).
-   - A **chave pública** vai em `src-tauri/tauri.conf.json` → `plugins.updater.pubkey` (substitua o placeholder).
+   - A **chave privada** fica no arquivo `.key` (formato PEM multi-linha). Cole o **conteúdo inteiro** no GitHub Secret `TAURI_SIGNING_PRIVATE_KEY`.
+   - A **chave pública** (base64) é impressa no terminal. Cole-a em `src-tauri/tauri.conf.json` → `plugins.updater.pubkey` (substitua o placeholder).
+   - A **senha** que você escolher vai no secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 
 3. **Configurar os secrets no GitHub Actions:**
-   - `TAURI_PRIVATE_KEY` — conteúdo da chave privada
-   - `TAURI_KEY_PASSWORD` — senha da chave (se houver)
+   - `TAURI_SIGNING_PRIVATE_KEY` — conteúdo PEM cru da chave privada (o workflow converte para base64 automaticamente antes do build)
+   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — senha da chave (se houver)
 
-4. **Publicar uma release:** crie uma tag `vX.Y.Z` (ex.: `v1.0.0`) e empurre. O GitHub Actions builda, assina e publica a release com o arquivo `latest.json` que o app consulta.
+4. **Gerar ícones do app** (uma única vez, a partir de uma imagem PNG 1024×1024):
+   ```bash
+   bun run tauri icon caminho/para/seu-icone.png
+   ```
+   Isso gera todos os formatos (`.ico`, `.icns`, `.png`) em `src-tauri/icons/`. Atualize o campo `bundle.icon` em `tauri.conf.json` com os arquivos gerados.
+
+5. **Publicar uma release:** crie uma tag `vX.Y.Z` (ex.: `v1.1.3`) e empurre:
+   ```bash
+   git tag v1.1.3
+   git push origin v1.1.3
+   ```
+   O GitHub Actions builda, assina e publica a release com o arquivo `latest.json` (que contêm as chaves `windows-x86_64-nsis` e `windows-x86_64`) e os arquivos `.sig` de assinatura.
+
+### Por que esses 5 fixes estão aplicados
+
+| Fix | Problema evitado |
+|-----|------------------|
+| `productName: "GeradorDeCertificados"` | Nome com acento/espaço causava 404 no download do updater (GitHub normaliza o nome do asset) |
+| `createUpdaterArtifacts: true` | Sem isso, o Tauri 2 não gera `latest.json` e `.sig` |
+| `targets: ["nsis", ...]` | Garante que `latest.json` tenha a chave `windows-x86_64-nsis` (procurada primeiro pelo updater) |
+| Step base64 no CI | A chave privada PEM cru causa erro "Invalid symbol 32"; o CI converte para base64 antes do build |
+| `tauri-plugin-updater` sem default-features | Evita o crate `zip` 2.x (yanked do crates.io) |
 
 ---
 

@@ -24,6 +24,11 @@ export function CertificatePreview() {
   const [hasSignature, setHasSignature] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Offset entre o ponto agarrado e o canto superior esquerdo da assinatura
+  // (em coordenadas originais do template). Preservado durante o arrasto para
+  // que o ponto agarrado fique sempre embaixo do cursor — sem "saltos".
+  const grabOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
   // Refs mutáveis para imagens (acessados só em effects/handlers, nunca em render)
   const imgRefs = useRef<{ template: HTMLImageElement | null; signature: HTMLImageElement | null }>({
     template: null,
@@ -181,6 +186,15 @@ export function CertificatePreview() {
         y >= sigRect.y - pad &&
         y <= sigRect.y + sigRect.height + pad
       ) {
+        // Registra o offset entre o ponto agarrado e o canto superior esquerdo
+        // da assinatura (em coordenadas originais), para preservar durante o arrasto.
+        const grabOrig = overlay.toOriginal(x, y);
+        if (grabOrig) {
+          grabOffsetRef.current = {
+            x: grabOrig.x - input.signaturePosX,
+            y: grabOrig.y - input.signaturePosY,
+          };
+        }
         draggingRef.current = true;
         setIsDragging(true);
         canvas.setPointerCapture(e.pointerId);
@@ -199,7 +213,11 @@ export function CertificatePreview() {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const orig = overlay.toOriginal(x, y);
-      if (orig) setSignaturePos(orig.x, orig.y);
+      if (orig) {
+        // Subtrai o offset do grab para que o ponto agarrado (não o canto)
+        // acompanhe o cursor — elimina o "salto" do canto superior esquerdo.
+        setSignaturePos(orig.x - grabOffsetRef.current.x, orig.y - grabOffsetRef.current.y);
+      }
     },
     [setSignaturePos],
   );
