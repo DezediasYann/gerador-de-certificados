@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "GeradorDeCertificados",
+  "productName": "GdC",
   "version": "1.2.6",
   "identifier": "com.certificados.gen",
   "build": {
@@ -39,20 +39,9 @@
       "icons/icon.ico"
     ],
     "windows": {
-      "wix": {
-        "language": {
-          "en-US": {
-            "productName": "Gerador de Certificados",
-            "fileDescription": "Gerador de Certificados"
-          }
-        }
-      },
       "nsis": {
-        "displayName": "Gerador de Certificados",
-        "installerIcon": "icons/icon.ico",
         "installMode": "perMachine",
-        "languages": ["PortugueseBR", "English"],
-        "displayLanguageSelector": false
+        "installerHooks": "nsis-installer-hooks.nsh"
       }
     },
     "macOS": {
