@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
+import { memo, useState } from "react";
+import { motion } from "framer-motion";
 import { useEventStore } from "@/store/event-store";
 import type { Evento, Participante } from "@/lib/events/types";
 import { CertificateGenerator } from "@/lib/events/CertificateGenerator";
 import { saveBlob } from "@/lib/tauri/TauriBridge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { staggerItem } from "@/lib/animations";
 import {
   Select,
   SelectContent,
@@ -80,16 +82,23 @@ export function ParticipantGrid({ evento }: { evento: Evento }) {
             </div>
           )}
           {evento.participantes.map((p) => (
-            <ParticipantRow
+            <motion.div
               key={p.id}
-              participante={p}
-              eventoId={evento.id}
-              cargaPadrao={evento.cargaHorariaPadrao}
-              onUpdate={updateParticipante}
-              onRemove={removeParticipante}
+              variants={staggerItem}
+              initial="initial"
+              animate="animate"
+              layout
+            >
+              <ParticipantRow
+                participante={p}
+                eventoId={evento.id}
+                cargaPadrao={evento.cargaHorariaPadrao}
+                onUpdate={updateParticipante}
+                onRemove={removeParticipante}
               onDownload={() => handleDownloadOne(p)}
               downloading={downloadingId === p.id}
             />
+            </motion.div>
           ))}
         </div>
       </div>
@@ -124,8 +133,8 @@ export function ParticipantGrid({ evento }: { evento: Evento }) {
   );
 }
 
-/** Linha da tabela (desktop). */
-function ParticipantRow({
+/** Linha da tabela (desktop). Memoizada para evitar re-renders de linhas não editadas. */
+const ParticipantRow = memo(function ParticipantRow({
   participante,
   eventoId,
   cargaPadrao,
@@ -247,7 +256,7 @@ function ParticipantRow({
       </div>
     </div>
   );
-}
+});
 
 /** Card empilhado (mobile). */
 function ParticipantCard({

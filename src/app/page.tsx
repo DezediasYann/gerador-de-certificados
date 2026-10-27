@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { WindowControls } from "@/components/macos/WindowControls";
 import { ThemeToggle } from "@/components/macos/theme-toggle";
 import { HomeScreen } from "@/components/events/HomeScreen";
@@ -11,6 +12,7 @@ import { useEventStore } from "@/store/event-store";
 import { APP_VERSION } from "@/lib/cert/Catalogs";
 import { Button } from "@/components/ui/button";
 import { Twitter, Instagram, Bug, Settings } from "lucide-react";
+import { pageTransitionProps } from "@/lib/animations";
 
 export default function Home() {
   const view = useEventStore((s) => s.view);
@@ -78,12 +80,16 @@ export default function Home() {
         <WindowControls side="right" />
       </header>
 
-      {/* ━━ Conteúdo principal: views ━━ */}
+      {/* ━━ Conteúdo principal: views com transição ━━ */}
       <main className="flex flex-1 flex-col">
-        {view === "home" && <HomeScreen />}
-        {view === "wizard" && <EventWizard />}
-        {view === "event" && <EventScreen />}
-        {view === "settings" && <SettingsScreen />}
+        <AnimatePresence mode="wait">
+          <motion.div key={view} {...pageTransitionProps} className="contents">
+            {view === "home" && <HomeScreen />}
+            {view === "wizard" && <EventWizard />}
+            {view === "event" && <EventScreen />}
+            {view === "settings" && <SettingsScreen />}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <UpdateCheckerDialog />

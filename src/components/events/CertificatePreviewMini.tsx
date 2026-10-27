@@ -104,6 +104,7 @@ export function CertificatePreviewMini({ evento }: { evento: Evento }) {
           height: displayDims.h,
           visibility: status === "ready" ? "visible" : "hidden",
           position: status === "ready" ? "static" : "absolute",
+          willChange: "transform",
         }}
         className="rounded shadow-lg"
       />

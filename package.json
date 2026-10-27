@@ -1,6 +1,6 @@
 {
   "name": "gerador-de-certificados",
-  "version": "1.2.4",
+  "version": "1.2.6",
   "private": true,
   "description": "Gerador de Certificados — crie certificados em PDF a partir de modelos, com assinatura digital e geração em lote. Por Yann Dezedias.",
   "author": "Yann Dezedias",

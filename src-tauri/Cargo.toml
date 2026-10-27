@@ -1,6 +1,6 @@
 [package]
 name = "gerador-de-certificados"
-version = "1.2.4"
+version = "1.2.6"
 description = "Gerador de Certificados — crie certificados em PDF a partir de modelos"
 authors = ["Yann Dezedias"]
 edition = "2021"

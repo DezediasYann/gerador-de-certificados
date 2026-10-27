@@ -1,0 +1,40 @@
+# UTF-8
+#
+# Version Info do Windows — controla os metadados exibidos no Explorer,
+# menu Iniciar, busca do Windows e Gerenciador de Tarefas.
+#
+# Importante: o productName do tauri.conf.json é "GeradorDeCertificados" (sem espaços)
+# porque não pode ter espaços no nome do instalador/binário (quebra o updater).
+# Mas o nome EXIBIDO ao usuário vem deste arquivo (FileDescription / ProductName),
+# e aqui pode ter espaços — "Gerador de Certificados".
+#
+# Para mais detalhes sobre fixed file info 'ffi' see:
+# http://msdn.microsoft.com/en-us/library/ms646997.aspx
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 2, 6, 0),
+    prodvers=(1, 2, 6, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+    ),
+  kids=[
+    StringFileInfo(
+      [
+      StringTable(
+        '040904B0',
+        [StringStruct('CompanyName', 'Yann Dezedias'),
+        StringStruct('FileDescription', 'Gerador de Certificados'),
+        StringStruct('FileVersion', '1.2.6'),
+        StringStruct('InternalName', 'GeradorDeCertificados'),
+        StringStruct('LegalCopyright', '© 2025 Yann Dezedias. Todos os direitos reservados.'),
+        StringStruct('OriginalFilename', 'GeradorDeCertificados.exe'),
+        StringStruct('ProductName', 'Gerador de Certificados'),
+        StringStruct('ProductVersion', '1.2.6')])
+      ]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+  ]
+)

@@ -151,6 +151,8 @@
       radial-gradient(1200px 600px at 15% -10%, oklch(0.72 0.13 80 / 0.10), transparent 60%),
       radial-gradient(1000px 500px at 100% 110%, oklch(0.50 0.08 90 / 0.08), transparent 60%);
     background-attachment: fixed;
+    /* Transição suave de tema (cores) — evita "piscar" ao alternar claro/escuro */
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
   .dark body {
     background-image:

@@ -1,10 +1,12 @@
 "use client";
 import { useEffect } from "react";
+import { motion } from "framer-motion";
 import { useEventStore } from "@/store/event-store";
 import { GlassPanel } from "@/components/macos/GlassPanel";
 import { Button } from "@/components/ui/button";
 import { Plus, Calendar, Users, Trash2, AlertCircle } from "lucide-react";
 import { templateUrlOf } from "@/lib/events/types";
+import { staggerContainer, staggerItem, cardHover, easeSmooth, DURATION } from "@/lib/animations";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,43 +48,59 @@ export function HomeScreen() {
       {events.length === 0 ? (
         <EmptyState onCreate={startWizard} />
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
           {events.map((ev) => (
-            <GlassPanel key={ev.id} className="group flex flex-col overflow-hidden p-0">
-              <button
-                onClick={() => openEvent(ev.id)}
-                className="block flex-1 text-left"
-                aria-label={`Abrir evento ${ev.nome}`}
-              >
-                {/* Imagem do card = template do evento */}
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-                  <img
-                    src={templateUrlOf(ev)}
-                    alt={ev.nome}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                  <div className="absolute bottom-2 left-3 right-3 flex items-center gap-1.5 text-xs text-white/90">
-                    <Calendar className="h-3 w-3" />
-                    <span className="truncate">{ev.tipoAtividade}</span>
+            <motion.div
+              key={ev.id}
+              variants={staggerItem}
+              whileHover={{
+                y: -6,
+                scale: 1.02,
+                transition: { duration: DURATION.fast, ease: easeSmooth },
+              }}
+              whileTap={{ scale: 0.99 }}
+              className="will-change-transform"
+            >
+              <GlassPanel className="group flex h-full flex-col overflow-hidden p-0">
+                <button
+                  onClick={() => openEvent(ev.id)}
+                  className="block flex-1 text-left"
+                  aria-label={`Abrir evento ${ev.nome}`}
+                >
+                  {/* Imagem do card = template do evento */}
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+                    <img
+                      src={templateUrlOf(ev)}
+                      alt={ev.nome}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <div className="absolute bottom-2 left-3 right-3 flex items-center gap-1.5 text-xs text-white/90">
+                      <Calendar className="h-3 w-3" />
+                      <span className="truncate">{ev.tipoAtividade}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="p-3">
-                  <h3 className="truncate text-sm font-semibold text-foreground">{ev.nome}</h3>
-                  <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    <span>{ev.participantes.length} participante{ev.participantes.length === 1 ? "" : "s"}</span>
+                  <div className="p-3">
+                    <h3 className="truncate text-sm font-semibold text-foreground">{ev.nome}</h3>
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Users className="h-3 w-3" />
+                      <span>{ev.participantes.length} participante{ev.participantes.length === 1 ? "" : "s"}</span>
+                    </div>
                   </div>
-                </div>
-              </button>
-              <div className="border-t border-border/40 px-3 py-2">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-full justify-center text-xs text-muted-foreground hover:text-destructive"
-                    >
+                </button>
+                <div className="border-t border-border/40 px-3 py-2">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-full justify-center text-xs text-muted-foreground hover:text-destructive"
+                      >
                       <Trash2 className="mr-1 h-3 w-3" /> Excluir
                     </Button>
                   </AlertDialogTrigger>
@@ -105,9 +123,10 @@ export function HomeScreen() {
                   </AlertDialogContent>
                 </AlertDialog>
               </div>
-            </GlassPanel>
+              </GlassPanel>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );

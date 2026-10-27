@@ -21,11 +21,32 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      # ━━ Cache do Bun (node_modules) ━━
+      # Acelera o `bun install` — pula download de deps quando o bun.lockb não mudou.
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb', 'package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Install frontend dependencies
         run: bun install
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      # ━━ Cache do Cargo (Rust) ━━
+      # A compilação Rust é a parte mais lenta do build (~15-30 min sem cache).
+      # Com cache: ~3-5 min. O Swatinem/rust-cache lida com ~/.cargo/registry,
+      # ~/.cargo/git e src-tauri/target automaticamente, com hash do Cargo.lock.
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
