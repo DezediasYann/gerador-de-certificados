@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+bun.lockb
+
+# Next.js
+.next/
+out/
+dev.log
+server.log
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Env
+.env
+.env.local
+
+# Build artifacts
+*.tsbuildinfo

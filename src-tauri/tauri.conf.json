@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Gerador de Certificados",
+  "version": "1.0.0",
+  "identifier": "com.yanndezedias.geradorcertificados",
+  "build": {
+    "beforeDevCommand": "bun run dev",
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "bun run build",
+    "frontendDist": "../out"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Gerador de Certificados",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 600,
+        "decorations": false,
+        "transparent": false,
+        "resizable": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Yann Dezedias",
+    "copyright": "© 2025 Yann Dezedias",
+    "category": "Utility",
+    "shortDescription": "Gerador de Certificados em PDF",
+    "longDescription": "Gerador de Certificados — crie certificados em PDF a partir de modelos, com assinatura digital e geração em lote."
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "SUBSTITUA_PELA_SUA_CHAVE_PUBLICA_GERADA_COM_tauri_signer_generate",
+      "endpoints": [
+        "https://github.com/DezediasYann/gerador-de-certificados/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}
