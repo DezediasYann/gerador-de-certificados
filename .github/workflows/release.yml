@@ -74,19 +74,24 @@ jobs:
 
       # ━━ Validação da chave: assina um arquivo de teste ━━
       # Falha cedo (~10s) se a senha ou a chave estiverem erradas.
+      # Usa um caminho de arquivo cross-platform (não /tmp, que não existe no Windows).
       - name: Validar chave de assinatura
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY_B64 }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          echo "teste-de-chave" > /tmp/tauri-key-test.txt
-          bun run tauri signer sign /tmp/tauri-key-test.txt || {
+          echo "teste-de-chave" > tauri-key-test.txt
+          bun run tauri signer sign tauri-key-test.txt
+          if [ $? -ne 0 ]; then
             echo "❌ Falha ao assinar com a chave privada. Verifique:"
             echo "   - O secret TAURI_SIGNING_PRIVATE_KEY tem o conteúdo do arquivo .key (em base64)"
             echo "   - O secret TAURI_SIGNING_PRIVATE_KEY_PASSWORD tem a senha correta"
+            rm -f tauri-key-test.txt tauri-key-test.txt.sig
             exit 1
-          }
+          fi
           echo "✅ Chave privada e senha validadas com sucesso."
+          rm -f tauri-key-test.txt tauri-key-test.txt.sig
+        shell: bash
 
       - uses: tauri-apps/tauri-action@v0
         env:
