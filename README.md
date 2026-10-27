@@ -115,10 +115,10 @@ Os binários instaláveis ficam em `src-tauri/target/release/bundle/` (`.msi`/`.
    ```
    Isso gera todos os formatos (`.ico`, `.icns`, `.png`) em `src-tauri/icons/`. Atualize o campo `bundle.icon` em `tauri.conf.json` com os arquivos gerados.
 
-5. **Publicar uma release:** crie uma tag `vX.Y.Z` (ex.: `v1.1.5`) e empurre:
+5. **Publicar uma release:** crie uma tag `vX.Y.Z` (ex.: `v1.2.4`) e empurre:
    ```bash
-   git tag v1.1.5
-   git push origin v1.1.5
+   git tag v1.2.4
+   git push origin v1.2.4
    ```
    O GitHub Actions builda, assina e publica a release com o arquivo `latest.json` (que contêm as chaves `windows-x86_64-nsis` e `windows-x86_64`) e os arquivos `.sig` de assinatura.
 

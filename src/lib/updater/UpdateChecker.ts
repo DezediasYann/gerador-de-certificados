@@ -47,7 +47,9 @@ export class UpdateChecker {
 
       if (!release) return null;
       const latest = release.tag_name;
-      if (!latest || latest === this.currentVersion) return null;
+      // Só há atualização se latest for ESTRITAMENTE MAIOR que a versão atual.
+      // Comparação semântica (não string) — evita sugerir downgrade.
+      if (!latest || compareVersions(latest, this.currentVersion) <= 0) return null;
 
       const asset =
         release.assets.find((a) => this.isAssetForCurrentPlatform(a.name)) ??
@@ -77,4 +79,59 @@ export class UpdateChecker {
     }
     return false;
   }
+}
+
+/**
+ * Compara duas versões semânticas (formato "vX.Y.Z" ou "X.Y.Z").
+ * @returns 1 se a > b, -1 se a < b, 0 se iguais.
+ *          Sufixos pré-release (-beta, -rc) são tratados: -beta.1 < -beta.2 < release.
+ */
+export function compareVersions(a: string, b: string): number {
+  const parseVersion = (v: string) => {
+    const clean = v.replace(/^v/, "");
+    const [main, pre] = clean.split("-");
+    const nums = main.split(".").map((n) => parseInt(n, 10) || 0);
+    // Completa com zeros se faltar componentes (ex.: "1.2" → [1,2,0])
+    while (nums.length < 3) nums.push(0);
+    const preParts = pre
+      ? pre.split(".").map((p) => (isNaN(Number(p)) ? p : Number(p)))
+      : null;
+    return { nums, preParts };
+  };
+
+  const va = parseVersion(a);
+  const vb = parseVersion(b);
+
+  // Compara componente a componente (major.minor.patch)
+  for (let i = 0; i < 3; i++) {
+    if (va.nums[i] > vb.nums[i]) return 1;
+    if (va.nums[i] < vb.nums[i]) return -1;
+  }
+
+  // Versão estável (sem pre-release) é MAIOR que versão com pre-release
+  // ex.: 1.2.0 > 1.2.0-beta.1
+  if (va.preParts && !vb.preParts) return -1;
+  if (!va.preParts && vb.preParts) return 1;
+  if (!va.preParts && !vb.preParts) return 0;
+
+  // Ambos têm pre-release — compara componente a componente
+  const maxLen = Math.max(va.preParts!.length, vb.preParts!.length);
+  for (let i = 0; i < maxLen; i++) {
+    const pa = va.preParts![i];
+    const pb = vb.preParts![i];
+    if (pa === undefined && pb !== undefined) return -1;
+    if (pa !== undefined && pb === undefined) return 1;
+    if (typeof pa === "number" && typeof pb === "number") {
+      if (pa > pb) return 1;
+      if (pa < pb) return -1;
+    } else if (typeof pa === "string" && typeof pb === "string") {
+      if (pa > pb) return 1;
+      if (pa < pb) return -1;
+    } else {
+      // número > string (ex.: beta < 1)
+      if (typeof pa === "number") return 1;
+      if (typeof pb === "number") return -1;
+    }
+  }
+  return 0;
 }

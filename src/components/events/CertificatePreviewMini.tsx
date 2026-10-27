@@ -77,19 +77,23 @@ export function CertificatePreviewMini({ evento }: { evento: Evento }) {
     };
   }, [evento, sampleParticipant]);
 
-  // Dimensões de exibição (contain)
+  // Dimensões de exibição (contain dentro do container, preenchendo o espaço)
   const displayDims = (() => {
     const origW = 2000;
     const origH = 1414;
-    if (containerSize.w === 0) return { w: origW, h: origH };
-    const scale = Math.min(containerSize.w / origW, 280 / origH, 1);
+    if (containerSize.w === 0 || containerSize.h === 0) {
+      return { w: origW, h: origH };
+    }
+    // Contain: escala para caber inteiro dentro do container (sem cortar).
+    // Sem o cap de 1 — permite upscale para preencher containers grandes.
+    const scale = Math.min(containerSize.w / origW, containerSize.h / origH);
     return { w: Math.round(origW * scale), h: Math.round(origH * scale) };
   })();
 
   return (
     <div
       ref={containerRef}
-      className="relative flex min-h-[180px] items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-2"
+      className="relative flex min-h-[320px] flex-1 items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-2"
     >
       {/* Canvas sempre montado para que o effect possa desenhar nele.
           Visibilidade controlada para não mostrar vazio durante o loading. */}
@@ -107,7 +111,7 @@ export function CertificatePreviewMini({ evento }: { evento: Evento }) {
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       )}
       {status === "error" && (
-        <div className="text-center text-xs text-destructive">{errorMsg}</div>
+        <div className="max-w-[80%] text-center text-xs text-destructive">{errorMsg}</div>
       )}
     </div>
   );

@@ -122,10 +122,12 @@ export function EventScreen() {
         </section>
 
         {/* Coluna lateral: preview do certificado */}
-        <aside className="lg:w-[420px] lg:flex-shrink-0">
-          <GlassPanel className="p-3">
+        <aside className="lg:w-[480px] lg:flex-shrink-0">
+          <GlassPanel className="flex flex-col p-3">
             <h3 className="mb-2 px-1 text-sm font-semibold text-foreground">Pré-visualização</h3>
-            <CertificatePreviewMini evento={evento} />
+            <div className="flex min-h-[400px] flex-1 flex-col">
+              <CertificatePreviewMini evento={evento} />
+            </div>
             <p className="mt-2 px-1 text-xs text-muted-foreground">
               O preview usa o primeiro participante (ou um placeholder) com as configurações do evento.
             </p>
@@ -151,11 +153,11 @@ function EventSettingsDialog({
           <Settings className="mr-1.5 h-4 w-4" /> Ajustes
         </Button>
       </DialogTrigger>
-      <DialogContent className="glass-strong max-h-[90vh] max-w-5xl overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="glass-strong flex h-[88vh] w-[95vw] max-w-[1400px] flex-col overflow-hidden p-5 sm:max-w-[1400px]">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Configurações do evento</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-1 gap-4 overflow-y-auto scroll-mac lg:grid-cols-[minmax(0,420px)_1fr]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto scroll-mac lg:grid-cols-[minmax(0,420px)_1fr]">
           {/* Coluna de configurações */}
           <div className="space-y-5 py-1">
             {/* Identificação */}
@@ -304,14 +306,14 @@ function EventSettingsDialog({
           </div>
 
           {/* Coluna de preview ao vivo */}
-          <div className="flex flex-col">
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="flex min-h-0 flex-col">
+            <h4 className="mb-2 flex-shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Pré-visualização
             </h4>
-            <div className="min-h-[300px] flex-1">
+            <div className="flex min-h-0 flex-1 flex-col">
               <CertificatePreviewMini evento={evento} />
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 flex-shrink-0 text-xs text-muted-foreground">
               O preview reage às configurações em tempo real. Use o primeiro participante (ou placeholder) como referência.
             </p>
           </div>
