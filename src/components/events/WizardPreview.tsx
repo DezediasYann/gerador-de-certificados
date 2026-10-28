@@ -145,6 +145,9 @@ export function WizardPreview({
   );
 
   // ── Arrasto da assinatura ──
+  // Conversão coords centradas (delta do centro) <-> coords absolutas do canvas.
+  //   cx = templateDims.w / 2  (centro absoluto da imagem)
+  //   sigCenter_abs = (cx + signaturePosX, cy + signaturePosY)
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
       if (!input.useSignature || !imgRefs.current.signature) return;
@@ -152,17 +155,21 @@ export function WizardPreview({
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
       const overlay = new SignatureOverlay(rect.width, rect.height, canvas.width, canvas.height);
+      const cx = templateDims.w / 2;
+      const cy = templateDims.h / 2;
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const ratio =
         imgRefs.current.signature.naturalHeight / imgRefs.current.signature.naturalWidth;
-      const sigH = input.signatureSize * ratio;
-      const sigRect = overlay.toDisplayRect(
-        input.signaturePosX,
-        input.signaturePosY,
-        input.signatureSize,
-        sigH,
-      );
+      const sigW = input.signatureSize;
+      const sigH = sigW * ratio;
+      // Centro absoluto da assinatura
+      const sigCenterAbsX = cx + input.signaturePosX;
+      const sigCenterAbsY = cy + input.signaturePosY;
+      // Top-left absoluto para hit-test
+      const absX = sigCenterAbsX - sigW / 2;
+      const absY = sigCenterAbsY - sigH / 2;
+      const sigRect = overlay.toDisplayRect(absX, absY, sigW, sigH);
       const pad = 10;
       if (
         x >= sigRect.x - pad &&
@@ -172,9 +179,10 @@ export function WizardPreview({
       ) {
         const grabOrig = overlay.toOriginal(x, y);
         if (grabOrig) {
+          // grabOffset = grabOrig_abs - sigCenter_abs
           grabOffsetRef.current = {
-            x: grabOrig.x - input.signaturePosX,
-            y: grabOrig.y - input.signaturePosY,
+            x: grabOrig.x - sigCenterAbsX,
+            y: grabOrig.y - sigCenterAbsY,
           };
         }
         draggingRef.current = true;
@@ -182,7 +190,7 @@ export function WizardPreview({
         canvas.setPointerCapture(e.pointerId);
       }
     },
-    [input.useSignature, input.signaturePath, input.signaturePosX, input.signaturePosY, input.signatureSize],
+    [input.useSignature, input.signaturePath, input.signaturePosX, input.signaturePosY, input.signatureSize, templateDims],
   );
 
   const onPointerMove = useCallback(
@@ -192,15 +200,21 @@ export function WizardPreview({
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
       const overlay = new SignatureOverlay(rect.width, rect.height, canvas.width, canvas.height);
+      const cx = templateDims.w / 2;
+      const cy = templateDims.h / 2;
       const orig = overlay.toOriginal(e.clientX - rect.left, e.clientY - rect.top);
       if (orig) {
+        // newSigCenter_abs = orig_abs - grabOffset
+        // newSigPosX = newSigCenter_abs.x - cx (delta do centro)
+        const newSigCenterAbsX = orig.x - grabOffsetRef.current.x;
+        const newSigCenterAbsY = orig.y - grabOffsetRef.current.y;
         onSignaturePosChange(
-          orig.x - grabOffsetRef.current.x,
-          orig.y - grabOffsetRef.current.y,
+          Math.round(newSigCenterAbsX - cx),
+          Math.round(newSigCenterAbsY - cy),
         );
       }
     },
-    [onSignaturePosChange],
+    [onSignaturePosChange, templateDims],
   );
 
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {

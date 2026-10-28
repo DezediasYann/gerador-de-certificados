@@ -9,7 +9,11 @@ import { PreferencesStore } from "@/lib/storage/PreferencesStore";
 import { FUNCOES_HORAS } from "@/lib/cert/Catalogs";
 import type { DocTipo } from "@/lib/cert/types";
 
-type View = "home" | "wizard" | "event" | "settings";
+type View = "home" | "wizard" | "event" | "settings" | "perfil";
+
+interface ApiConfig {
+  accessKey: string;
+}
 
 interface EventState {
   view: View;
@@ -19,11 +23,13 @@ interface EventState {
   wizardDraft: EventDraft | null;
   loaded: boolean;
   betaUpdates: boolean;
+  apiConfig: ApiConfig;
 
   // Navegação
   init: () => Promise<void>;
   goHome: () => void;
   goSettings: () => void;
+  goPerfil: () => void;
   startWizard: () => void;
   setWizardStep: (step: 1 | 2) => void;
   updateWizardDraft: (patch: Partial<EventDraft>) => void;
@@ -42,6 +48,7 @@ interface EventState {
 
   // Configurações
   setBetaUpdates: (v: boolean) => void;
+  setApiConfig: (config: ApiConfig) => void;
   checkUpdateOnLaunch: () => boolean;
 }
 
@@ -58,20 +65,38 @@ const DEFAULT_DRAFT: EventDraft = {
   useDate: false,
   dataInicio: "",
   dataFim: "",
+  // Sistema de coordenadas CENTRADO: posX/posY = 0 significa "no centro absoluto da imagem"
   appearance: {
     fontName: "OpenSans",
     fontSize: 50,
     useItalic: true,
-    posX: 250,
-    posY: 600,
+    posX: 0,            // centro do bloco de texto no centro horizontal da imagem
+    posY: -100,         // topo do bloco de texto ligeiramente acima do centro (texto desce a partir daí)
+    textWidth: 1500,    // largura total do bloco, centrada em (centroX + posX)
+    fontColor: "#000000",
+    fontWeight: 400,
+    letterSpacing: 0,
+    lineHeight: 1.5,
+    coordSystem: "center",
   },
   signature: {
     useSignature: false,
     signatureName: "",
     signatureDataUrl: null,
     signatureSize: 300,
-    signaturePosX: 0,
+    signaturePosX: 0,   // centro da assinatura no centro da imagem
     signaturePosY: 0,
+  },
+  qrCode: {
+    enabled: true,
+    size: 130,
+    style: "rounded" as const,
+    // canto inferior direito em coords centradas (para template 2000×1414 default)
+    posX: 830,          // 1830 - 1000 (centro X) = 830
+    posY: 537,          // 1244 - 707 (centro Y) = 537
+    showLabel: true,
+    fgColor: "#1a1612",
+    bgColor: "transparent",
   },
 };
 
@@ -83,19 +108,22 @@ export const useEventStore = create<EventState>((set, get) => ({
   wizardDraft: null,
   loaded: false,
   betaUpdates: false,
+  apiConfig: { accessKey: "" },
 
   init: async () => {
     if (get().loaded) return;
     const events = await repo.list();
-    // Carrega preferência de beta updates
     const prefs = new PreferencesStore();
     const beta = await prefs.get<boolean>("beta_updates", false);
-    set({ events, loaded: true, betaUpdates: beta });
+    const apiConfig = await prefs.get<ApiConfig>("api_config", { accessKey: "" });
+    set({ events, loaded: true, betaUpdates: beta, apiConfig });
   },
 
   goHome: () => set({ view: "home", currentEventId: null, wizardDraft: null, wizardStep: 1 }),
 
   goSettings: () => set({ view: "settings", currentEventId: null, wizardDraft: null }),
+
+  goPerfil: () => set({ view: "perfil", currentEventId: null, wizardDraft: null }),
 
   startWizard: () => {
     // Reseta o draft com defaults (copia profunda)
@@ -229,6 +257,12 @@ export const useEventStore = create<EventState>((set, get) => ({
     const prefs = new PreferencesStore();
     void prefs.set("beta_updates", v);
     set({ betaUpdates: v });
+  },
+
+  setApiConfig: (config) => {
+    const prefs = new PreferencesStore();
+    void prefs.set("api_config", config);
+    set({ apiConfig: config });
   },
 
   checkUpdateOnLaunch: () => get().betaUpdates || true, // sempre verifica; beta é filtro

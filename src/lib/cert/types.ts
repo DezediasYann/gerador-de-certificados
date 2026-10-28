@@ -62,6 +62,11 @@ export interface CertificateInput {
   useItalic: boolean;
   posX: number;
   posY: number;
+  textWidth?: number;
+  fontColor?: string;
+  fontWeight?: number;
+  letterSpacing?: number;
+  lineHeight?: number;
   // Assinatura
   useSignature: boolean;
   signaturePath: string | null;

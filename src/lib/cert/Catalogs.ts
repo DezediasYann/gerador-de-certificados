@@ -63,7 +63,7 @@ export const AVAILABLE_FONTS: FontFamilyDescriptor[] = [
 ];
 
 /** Versão atual do app — usada pelo OTA checker. */
-export const APP_VERSION = "v1.2.6";
+export const APP_VERSION = "v1.3.0";
 
 /** Repositório GitHub para OTA (substituir pelo repositório real quando publicado). */
 export const GITHUB_REPO = "DezediasYann/gerador-de-certificados";

@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useCertStore } from "@/store/cert-store";
-import { CertificateEngine } from "@/lib/cert/CertificateEngine";
+import { useEventStore } from "@/store/event-store";
+import { CertificateEngine, type QrDrawOptions } from "@/lib/cert/CertificateEngine";
 import { FontLoader } from "@/lib/cert/FontLoader";
 import { PdfExporter } from "@/lib/cert/PdfExporter";
 import { ExcelBatchProcessor } from "@/lib/cert/ExcelBatchProcessor";
+import { ValidationRegistrar } from "@/lib/events/ValidationRegistrar";
 import { saveBlob, openFile, openDirectory, writeFileToPath, isTauri } from "@/lib/tauri/TauriBridge";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, FileStack, FileDown, Loader2 } from "lucide-react";
@@ -40,11 +42,64 @@ export function Toolbar() {
         : null;
       const fonts = await fontLoaderRef.load(input.fontName);
 
+      // Registra validação na API (se access key configurada)
+      let qrOptions: QrDrawOptions | undefined;
+      const apiConfig = useEventStore.getState().apiConfig;
+      if (apiConfig.accessKey) {
+        const registrar = new ValidationRegistrar(apiConfig.accessKey);
+        const eventoLike = {
+          id: "local",
+          nome: input.nomeEvento,
+          tipoAtividade: input.tipoAtividade,
+          nomeEvento: input.nomeEvento,
+          cargaHorariaPadrao: input.cargaHoraria,
+          useDate: input.useDate,
+          dataInicio: input.dataInicio,
+          dataFim: input.dataFim,
+          templateName: input.templateName,
+          templateSource: "bundled" as const,
+          templateDataUrl: null,
+          appearance: { fontName: input.fontName, fontSize: input.fontSize, useItalic: input.useItalic, posX: input.posX, posY: input.posY },
+          signature: { useSignature: input.useSignature, signatureName: "", signatureDataUrl: input.signaturePath, signatureSize: input.signatureSize, signaturePosX: input.signaturePosX, signaturePosY: input.signaturePosY },
+          qrCode: { enabled: true, size: 130, style: "rounded" as const, posX: 1830, posY: 1244, showLabel: true },
+          participantes: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        const participanteLike = {
+          id: "local",
+          nome: input.nome,
+          docTipo: input.docTipo,
+          docNumero: input.docNumero,
+          funcao: input.funcaoParticipante,
+          funcaoCustom: "",
+          nomeTrabalho: input.nomeTrabalho,
+          cargaHoraria: input.cargaHoraria,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        const result = await registrar.register(eventoLike, participanteLike);
+        if (result.ok && result.validateUrl) {
+          qrOptions = {
+            url: result.validateUrl,
+            size: 130,
+            style: "rounded",
+            posX: 1830,
+            posY: 1244,
+            showLabel: true,
+          };
+        } else if (result.error) {
+          toast.warning("Certificado gerado, mas falha ao registrar validação online", {
+            description: result.error,
+          });
+        }
+      }
+
       const fullCanvas = document.createElement("canvas");
       const ctx = fullCanvas.getContext("2d");
       if (!ctx) throw new Error("Canvas 2D indisponível");
       const engine = new CertificateEngine(ctx);
-      await engine.render(input, template, fonts, signature);
+      await engine.render(input, template, fonts, signature, qrOptions);
 
       const exporter = new PdfExporter();
       const blob = exporter.toBlob(fullCanvas);
@@ -52,7 +107,11 @@ export function Toolbar() {
       const saved = await saveBlob(blob, defaultName, [
         { name: "PDF", extensions: ["pdf"] },
       ]);
-      if (saved) toast.success(`Certificado salvo: ${saved}`);
+      if (saved) {
+        toast.success(`Certificado salvo: ${saved}`, {
+          description: validateUrl ? "Validação online registrada com QR code" : undefined,
+        });
+      }
     } catch (err) {
       console.error(err);
       toast.error("Erro ao gerar PDF", {

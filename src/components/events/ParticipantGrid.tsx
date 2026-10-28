@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { useEventStore } from "@/store/event-store";
 import type { Evento, Participante } from "@/lib/events/types";
 import { CertificateGenerator } from "@/lib/events/CertificateGenerator";
+import { ValidationRegistrar } from "@/lib/events/ValidationRegistrar";
+import { isValidAccessKey, API_URL } from "@/lib/events/apiConfig";
 import { saveBlob } from "@/lib/tauri/TauriBridge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +39,36 @@ export function ParticipantGrid({ evento }: { evento: Evento }) {
     }
     setDownloadingId(p.id);
     try {
+      let validationUrl: string | undefined;
+      const accessKey = useEventStore.getState().apiConfig.accessKey;
+
+      if (isValidAccessKey(accessKey)) {
+        // Se já tem validationKey salva, reutiliza (não registra de novo)
+        if (p.validationKey) {
+          validationUrl = `${API_URL}/v/${p.validationKey}`;
+        } else {
+          const registrar = new ValidationRegistrar(accessKey);
+          const eventResult = await registrar.registerEvent(evento);
+          const result = eventResult.ok && eventResult.eventId
+            ? await registrar.registerWithEvent(evento, p, eventResult.eventId)
+            : await registrar.register(evento, p);
+          if (result.ok && result.validateUrl) {
+            validationUrl = result.validateUrl;
+            // Salva a validationKey no participante (persiste automaticamente)
+            await updateParticipante(evento.id, p.id, { validationKey: result.validationKey });
+          } else if (result.error) {
+            toast.warning("Certificado será gerado sem QR code", { description: result.error });
+          }
+        }
+      }
+
       const gen = new CertificateGenerator();
-      const { blob, filename } = await gen.generate(evento, p);
+      const { blob, filename } = await gen.generate(evento, p, validationUrl);
       await saveBlob(blob, filename, [{ name: "PDF", extensions: ["pdf"] }]);
-      toast.success(`Certificado gerado: ${filename}`);
+
+      toast.success(`Certificado gerado: ${filename}`, {
+        description: validationUrl ? "Validação online registrada com QR code" : undefined,
+      });
     } catch (err) {
       toast.error("Erro ao gerar certificado", {
         description: err instanceof Error ? err.message : undefined,

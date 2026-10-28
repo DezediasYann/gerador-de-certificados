@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
+import { LabeledSlider } from "@/components/ui/labeled-slider";
 import {
   Select,
   SelectContent,
@@ -175,35 +176,23 @@ export function EventWizard() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Posição X</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={4000}
-                    value={draft.appearance.posX}
-                    onChange={(e) =>
-                      updateDraft({
-                        appearance: { ...draft.appearance, posX: Number(e.target.value) },
-                      })
-                    }
-                  />
+              {/* Posição do texto — sistema centrado (0 = centro absoluto da imagem) */}
+              <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Posição do texto</span>
+                  <span className="text-[10px] text-muted-foreground/80">0 = centro da imagem</span>
                 </div>
-                <div className="space-y-2">
-                  <Label>Posição Y</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={4000}
-                    value={draft.appearance.posY}
-                    onChange={(e) =>
-                      updateDraft({
-                        appearance: { ...draft.appearance, posY: Number(e.target.value) },
-                      })
-                    }
-                  />
-                </div>
+                <LabeledSlider label="Horizontal (X)" value={draft.appearance.posX} min={-1000} max={1000} step={5} suffix=" px"
+                  onValueChange={(v) => updateDraft({ appearance: { ...draft.appearance, posX: v } })}
+                />
+                <LabeledSlider label="Vertical (Y)" value={draft.appearance.posY} min={-700} max={700} step={5} suffix=" px"
+                  hint="Delta do centro até o topo do bloco de texto (texto desce a partir daí)."
+                  onValueChange={(v) => updateDraft({ appearance: { ...draft.appearance, posY: v } })}
+                />
+                <LabeledSlider label="Largura do bloco" value={draft.appearance.textWidth ?? 1500} min={0} max={2000} step={10} suffix=" px"
+                  hint="Largura total do bloco de texto, centrada em (centroX + posX). 0 = concentrado no centro."
+                  onValueChange={(v) => updateDraft({ appearance: { ...draft.appearance, textWidth: v } })}
+                />
               </div>
 
               <div className="flex items-center space-x-2">
@@ -219,6 +208,56 @@ export function EventWizard() {
                 <Label htmlFor="ev-italic" className="cursor-pointer">
                   Itálico no nome do evento/trabalho
                 </Label>
+              </div>
+
+              {/* Cor da fonte + espaçamento + line-height */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Cor da fonte</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={draft.appearance.fontColor ?? "#000000"}
+                      onChange={(e) =>
+                        updateDraft({ appearance: { ...draft.appearance, fontColor: e.target.value } })
+                      }
+                      className="h-8 w-12 cursor-pointer rounded border border-border"
+                    />
+                    <Input
+                      value={draft.appearance.fontColor ?? "#000000"}
+                      onChange={(e) =>
+                        updateDraft({ appearance: { ...draft.appearance, fontColor: e.target.value } })
+                      }
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Espaçamento</Label>
+                  <Input
+                    type="number"
+                    min={-5}
+                    max={20}
+                    step={0.5}
+                    value={draft.appearance.letterSpacing ?? 0}
+                    onChange={(e) =>
+                      updateDraft({ appearance: { ...draft.appearance, letterSpacing: Number(e.target.value) } })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Altura linha</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    value={draft.appearance.lineHeight ?? 1.5}
+                    onChange={(e) =>
+                      updateDraft({ appearance: { ...draft.appearance, lineHeight: Number(e.target.value) } })
+                    }
+                  />
+                </div>
               </div>
             </section>
 
@@ -270,6 +309,80 @@ export function EventWizard() {
                     })
                   }
                 />
+              )}
+            </section>
+
+            {/* QR Code */}
+            <section className="space-y-3 border-t border-border/60 pt-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">QR Code de validação</h3>
+                <Checkbox
+                  id="ev-qr"
+                  checked={draft.qrCode?.enabled ?? true}
+                  onCheckedChange={(v) =>
+                    updateDraft({ qrCode: { ...draft.qrCode, enabled: Boolean(v) } })
+                  }
+                />
+              </div>
+              {draft.qrCode?.enabled && (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label>Estilo</Label>
+                    <Select
+                      value={draft.qrCode.style ?? "rounded"}
+                      onValueChange={(v) =>
+                        updateDraft({ qrCode: { ...draft.qrCode, style: v as "classic" | "rounded" | "dots" | "minimal" } })
+                      }
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="classic">Clássico (quadrados)</SelectItem>
+                        <SelectItem value="rounded">Arredondado</SelectItem>
+                        <SelectItem value="dots">Pontos</SelectItem>
+                        <SelectItem value="minimal">Minimalista</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Tamanho</Label>
+                      <span className="text-xs text-muted-foreground">{draft.qrCode.size ?? 130} px</span>
+                    </div>
+                    <Slider
+                      value={[draft.qrCode.size ?? 130]}
+                      min={60}
+                      max={400}
+                      step={10}
+                      onValueChange={(v) =>
+                        updateDraft({ qrCode: { ...draft.qrCode, size: v[0] } })
+                      }
+                    />
+                  </div>
+                  <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Posição do QR code</span>
+                      <span className="text-[10px] text-muted-foreground/80">0 = centro da imagem</span>
+                    </div>
+                    <LabeledSlider label="Horizontal (X)" value={draft.qrCode.posX ?? 830} min={-1000} max={1000} step={5} suffix=" px"
+                      onValueChange={(v) => updateDraft({ qrCode: { ...draft.qrCode, posX: v } })}
+                    />
+                    <LabeledSlider label="Vertical (Y)" value={draft.qrCode.posY ?? 537} min={-700} max={700} step={5} suffix=" px"
+                      onValueChange={(v) => updateDraft({ qrCode: { ...draft.qrCode, posY: v } })}
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="ev-qr-label"
+                      checked={draft.qrCode.showLabel ?? true}
+                      onCheckedChange={(v) =>
+                        updateDraft({ qrCode: { ...draft.qrCode, showLabel: Boolean(v) } })
+                      }
+                    />
+                    <Label htmlFor="ev-qr-label" className="cursor-pointer">
+                      Mostrar texto "Valide em" abaixo do QR
+                    </Label>
+                  </div>
+                </div>
               )}
             </section>
 
@@ -439,27 +552,17 @@ function SignaturePicker({
           onValueChange={(v) => onChangeSize(v[0])}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label>Pos. X</Label>
-          <Input
-            type="number"
-            min={0}
-            max={4000}
-            value={sig.signaturePosX}
-            onChange={(e) => onChangePos(Number(e.target.value), sig.signaturePosY)}
-          />
+      <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Posição da assinatura</span>
+          <span className="text-[10px] text-muted-foreground/80">0 = centro da imagem</span>
         </div>
-        <div className="space-y-2">
-          <Label>Pos. Y</Label>
-          <Input
-            type="number"
-            min={0}
-            max={4000}
-            value={sig.signaturePosY}
-            onChange={(e) => onChangePos(sig.signaturePosX, Number(e.target.value))}
-          />
-        </div>
+        <LabeledSlider label="Horizontal (X)" value={sig.signaturePosX} min={-1000} max={1000} step={5} suffix=" px"
+          onValueChange={(v) => onChangePos(v, sig.signaturePosY)}
+        />
+        <LabeledSlider label="Vertical (Y)" value={sig.signaturePosY} min={-700} max={700} step={5} suffix=" px"
+          onValueChange={(v) => onChangePos(sig.signaturePosX, v)}
+        />
       </div>
       <p className="text-xs text-muted-foreground">
         Dica: arraste a assinatura diretamente sobre o preview ao lado para posicioná-la.

@@ -14,17 +14,44 @@ export interface Participante {
   funcaoCustom: string;    // preenchido quando funcao === "Outro"
   nomeTrabalho: string;    // preenchido quando Apresentador(a)
   cargaHoraria: string;    // herda do evento se vazio
+  validationKey?: string;  // chave de validação VPS (preenchida após primeiro registro)
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Sistema de coordenadas CENTRADO: todos os eixos de posição (X, Y) têm como
+ * origem o CENTRO ABSOLUTO da imagem do template, independente das dimensões.
+ *   • posX = 0  →  elemento centralizado horizontalmente no centro da imagem
+ *   • posY = 0  →  elemento centralizado verticalmente no centro da imagem
+ *   • valores negativos deslocam para esquerda/cima; positivos para direita/baixo
+ *
+ * Para o bloco de texto:
+ *   • posX       → delta do centro X até o CENTRO do bloco de texto
+ *   • posY       → delta do centro Y até o TOPO do bloco de texto (1ª linha)
+ *   • textWidth  → largura total do bloco, centrado em (centroX + posX)
+ *   • Quando posX=posY=textWidth=0  →  texto concentra-se no centro absoluto
+ *
+ * Para assinatura e QR code:
+ *   • posX/posY  → delta do centro da imagem até o CENTRO do elemento
+ *
+ * O campo `coordSystem` marca eventos já migrados do sistema antigo (absolute).
+ */
+export type CoordSystem = "absolute" | "center";
 
 /** Configurações de aparência do certificado (pertencem ao evento). */
 export interface CertAppearance {
   fontName: string;
   fontSize: number;
   useItalic: boolean;
-  posX: number;
-  posY: number;
+  posX: number;            // delta do centro X da imagem até o centro do bloco de texto
+  posY: number;            // delta do centro Y da imagem até o topo do bloco de texto
+  textWidth: number;       // largura total do bloco de texto (centrado em centroX+posX)
+  fontColor: string;
+  fontWeight: number;
+  letterSpacing: number;
+  lineHeight: number;
+  coordSystem?: CoordSystem;  // "center" (default going forward) | "absolute" (legacy)
 }
 
 /** Configurações de assinatura digital (pertencem ao evento). */
@@ -34,8 +61,23 @@ export interface CertSignature {
   // dataURL para persistir imagem carregada; ou null
   signatureDataUrl: string | null;
   signatureSize: number;
-  signaturePosX: number;
-  signaturePosY: number;
+  signaturePosX: number;   // delta do centro X da imagem até o CENTRO da assinatura
+  signaturePosY: number;   // delta do centro Y da imagem até o CENTRO da assinatura
+}
+
+/** Estilos visuais do QR code. */
+export type QrStyle = "classic" | "rounded" | "dots" | "minimal";
+
+/** Configurações do QR code de validação (pertencem ao evento). */
+export interface CertQrCode {
+  enabled: boolean;
+  size: number;
+  style: QrStyle;
+  posX: number;            // delta do centro X da imagem até o CENTRO do QR
+  posY: number;            // delta do centro Y da imagem até o CENTRO do QR
+  showLabel: boolean;
+  fgColor: string;       // cor dos módulos (padrão: #1a1612)
+  bgColor: string;       // cor de fundo (padrão: "transparent")
 }
 
 /** Um evento completo. */
@@ -53,9 +95,10 @@ export interface Evento {
   useDate: boolean;
   dataInicio: string;
   dataFim: string;
-  // Aparência e assinatura
+  // Aparência, assinatura e QR code
   appearance: CertAppearance;
   signature: CertSignature;
+  qrCode: CertQrCode;
   // Participantes
   participantes: Participante[];
   // Metadados

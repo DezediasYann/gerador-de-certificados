@@ -53,10 +53,10 @@
   --background: oklch(0.97 0.006 75);          /* creme quente */
   --foreground: oklch(0.20 0.008 75);          /* quase-preto quente */
 
-  /* Vidro (glass) — painéis translúcidos. No modo claro, mais opacos para legibilidade. */
-  --glass: oklch(1 0 0 / 0.82);                /* branco translúcido */
-  --glass-border: oklch(1 0 0 / 0.65);         /* borda refração */
-  --glass-strong: oklch(1 0 0 / 0.92);         /* vidro mais opaco */
+  /* Vidro (glass) — baixa opacidade pra o backdrop-filter ser visível. */
+  --glass: oklch(1 0 0 / 0.55);
+  --glass-border: oklch(1 0 0 / 0.50);
+  --glass-strong: oklch(1 0 0 / 0.72);
 
   --card: oklch(1 0 0 / 0.92);
   --card-foreground: var(--foreground);
@@ -98,9 +98,9 @@
   --background: oklch(0.18 0.006 75);          /* quase-preto quente */
   --foreground: oklch(0.95 0.005 75);
 
-  --glass: oklch(0.24 0.008 75 / 0.65);
-  --glass-border: oklch(1 0 0 / 0.12);
-  --glass-strong: oklch(0.28 0.008 75 / 0.82);
+  --glass: oklch(0.22 0.008 75 / 0.50);
+  --glass-border: oklch(1 0 0 / 0.10);
+  --glass-strong: oklch(0.25 0.008 75 / 0.68);
 
   --card: oklch(0.24 0.008 75 / 0.72);
   --card-foreground: var(--foreground);
@@ -161,25 +161,59 @@
   }
 }
 
-/* ━━ Utilitários Liquid Glass ━━ */
+/* Forçar dialog do EventSettingsDialog a ser grande */
+.glass-strong[style*="88vh"] {
+  max-width: 1400px !important;
+  width: 95vw !important;
+  height: 88vh !important;
+  max-height: 88vh !important;
+  display: flex !important;
+}
+
+/* ━━ Liquid Glass — fora de @layer para máxima prioridade ━━
+   backdrop-filter precisa de isolation: isolate para funcionar em WebView2 (Tauri Windows).
+   NOTA: NÃO definimos `position` aqui — isso sobrescreveria `fixed` (dialogs) e `sticky` (header).
+   isolation: isolate cria stacking context por si só. O ::before fallback ancora em qualquer
+   ancestor posicionado (fixed/sticky/relative). GlassPanel adiciona `relative` via Tailwind. */
+.glass {
+  isolation: isolate;
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.05) !important;
+  backdrop-filter: blur(40px) saturate(1.8) brightness(1.05) !important;
+  border: 1px solid var(--glass-border);
+}
+.dark .glass {
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(1.6) brightness(0.85) !important;
+  backdrop-filter: blur(40px) saturate(1.6) brightness(0.85) !important;
+  border-color: var(--glass-border);
+}
+.glass-strong {
+  isolation: isolate;
+  background: var(--glass-strong) !important;
+  -webkit-backdrop-filter: blur(50px) saturate(1.8) brightness(1.05) !important;
+  backdrop-filter: blur(50px) saturate(1.8) brightness(1.05) !important;
+  border: 1px solid var(--glass-border);
+}
+.dark .glass-strong {
+  -webkit-backdrop-filter: blur(50px) saturate(1.6) brightness(0.85) !important;
+  backdrop-filter: blur(50px) saturate(1.6) brightness(0.85) !important;
+}
+
+/* Pseudo-elemento de fallback: se backdrop-filter não funcionar,
+   cria uma camada semi-opaca que simula o frosted glass. */
+.glass::before,
+.glass-strong::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1;
+  background: inherit;
+  opacity: 0.4;
+}
+
 @layer utilities {
-  /* Painel de vidro translúcido com refração */
-  .glass {
-    background: var(--glass);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border: 1px solid var(--glass-border);
-  }
-  .dark .glass {
-    background: var(--glass);
-    border-color: var(--glass-border);
-  }
-  .glass-strong {
-    background: var(--glass-strong);
-    backdrop-filter: blur(28px) saturate(1.5);
-    -webkit-backdrop-filter: blur(28px) saturate(1.5);
-    border: 1px solid var(--glass-border);
-  }
   /* Região arrastável da janela (Tauri) */
   .drag-region {
     -webkit-app-region: drag;

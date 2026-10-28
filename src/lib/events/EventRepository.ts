@@ -7,6 +7,57 @@
 import type { Evento } from "./types";
 import { isTauri } from "../tauri/TauriBridge";
 
+/** Dimensões de template assumidas na migração absolute→center (padrão histórico). */
+const MIGRATION_TEMPLATE_W = 2000;
+const MIGRATION_TEMPLATE_H = 1414;
+const MIGRATION_CX = MIGRATION_TEMPLATE_W / 2; // 1000
+const MIGRATION_CY = MIGRATION_TEMPLATE_H / 2; // 707
+
+/**
+ * Migra um evento do sistema de coordenadas absoluto (legacy) para o centrado.
+ *   • Texto:   old posX era LEFT edge → new posX = (old.posX + old.textWidth/2) - CX
+ *               old posY era TOP edge  → new posY = old.posY - CY
+ *   • Assinatura/QR: old posX/Y era TOP-LEFT → new posX/Y = (old.posX + size/2) - CX, idem Y
+ *
+ * Eventos já marcados com coordSystem="center" são retornados inalterados.
+ */
+function migrateToCenterCoords(event: Evento): Evento {
+  if (event.appearance?.coordSystem === "center") return event;
+
+  const app = event.appearance;
+  const oldTextWidth = app?.textWidth ?? 1500;
+  const newTextPosX = (app?.posX ?? MIGRATION_CX) + oldTextWidth / 2 - MIGRATION_CX;
+  const newTextPosY = (app?.posY ?? MIGRATION_CY) - MIGRATION_CY;
+
+  const sig = event.signature;
+  const sigSize = sig?.signatureSize ?? 300;
+  const newSigPosX = (sig?.signaturePosX ?? MIGRATION_CX) + sigSize / 2 - MIGRATION_CX;
+  const newSigPosY = (sig?.signaturePosY ?? MIGRATION_CY) + sigSize / 2 - MIGRATION_CY;
+
+  const qr = event.qrCode;
+  const qrSize = qr?.size ?? 130;
+  const newQrPosX = qr ? qr.posX + qrSize / 2 - MIGRATION_CX : 0;
+  const newQrPosY = qr ? qr.posY + qrSize / 2 - MIGRATION_CY : 0;
+
+  return {
+    ...event,
+    appearance: {
+      ...app,
+      posX: Math.round(newTextPosX),
+      posY: Math.round(newTextPosY),
+      coordSystem: "center" as const,
+    },
+    signature: {
+      ...sig,
+      signaturePosX: Math.round(newSigPosX),
+      signaturePosY: Math.round(newSigPosY),
+    },
+    qrCode: qr
+      ? { ...qr, posX: Math.round(newQrPosX), posY: Math.round(newQrPosY) }
+      : event.qrCode,
+  };
+}
+
 export class EventRepository {
   private cache: Evento[] | null = null;
   private dataFilePath: string | null = null;
@@ -76,8 +127,21 @@ export class EventRepository {
   /** Lista todos os eventos (do mais recente para o mais antigo). */
   async list(): Promise<Evento[]> {
     if (this.cache) return [...this.cache].sort(byUpdatedAtDesc);
-    const all = await this.readRaw();
+    const raw = await this.readRaw();
+    // Migra eventos legacy (coord system absoluto) para centrado
+    let migrated = false;
+    const all = raw.map((e) => {
+      if (e.appearance?.coordSystem !== "center") {
+        migrated = true;
+        return migrateToCenterCoords(e);
+      }
+      return e;
+    });
     this.cache = all;
+    // Se houve migração, persiste para não re-migrar a cada leitura
+    if (migrated) {
+      await this.writeRaw(all);
+    }
     return [...all].sort(byUpdatedAtDesc);
   }
 

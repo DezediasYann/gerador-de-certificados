@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   Select,
   SelectContent,
@@ -14,13 +15,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { LabeledSlider } from "@/components/ui/labeled-slider";
 import { ParticipantGrid } from "./ParticipantGrid";
 import { CertificatePreviewMini } from "./CertificatePreviewMini";
 import { ZipExporter } from "@/lib/events/ZipExporter";
 import { saveBlob } from "@/lib/tauri/TauriBridge";
 import { TIPOS_DE_ATIVIDADE } from "@/lib/cert/Catalogs";
 import { FontSelect } from "@/components/cert/FontSelect";
-import { ArrowLeft, Download, Loader2, Settings, Calendar, Users } from "lucide-react";
+import { isValidAccessKey } from "@/lib/events/apiConfig";
+import { ArrowLeft, Download, Loader2, Settings, Calendar, Users, Upload, X, ChevronDown, Lock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -65,7 +68,8 @@ export function EventScreen() {
     setZipping(true);
     try {
       const exporter = new ZipExporter();
-      const blob = await exporter.export(evento);
+      const accessKey = useEventStore.getState().apiConfig.accessKey;
+      const blob = await exporter.export(evento, undefined, accessKey);
       const filename = `${evento.nome.toUpperCase().replace(/\s+/g, "_")}-certificados.zip`;
       await saveBlob(blob, filename, [{ name: "ZIP", extensions: ["zip"] }]);
       toast.success(`${evento.participantes.length} certificados gerados em ${filename}`);
@@ -146,6 +150,16 @@ function EventSettingsDialog({
   evento: Evento;
   onUpdate: (id: string, patch: Partial<Evento>) => Promise<void>;
 }) {
+  // Fallback para eventos antigos que não têm qrCode ou campos novos de appearance
+  // (valores em sistema centrado — delta do centro da imagem)
+  const qrDefaults = { enabled: true, size: 130, style: "rounded" as const, posX: 830, posY: 537, showLabel: true, fgColor: "#1a1612", bgColor: "transparent" };
+  const qr = evento.qrCode ?? qrDefaults;
+  const fontColor = evento.appearance.fontColor ?? "#000000";
+  const letterSpacing = evento.appearance.letterSpacing ?? 0;
+  const lineHeight = evento.appearance.lineHeight ?? 1.5;
+  const accessKey = useEventStore((s) => s.apiConfig.accessKey);
+  const hasAccessKey = isValidAccessKey(accessKey);
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -153,13 +167,16 @@ function EventSettingsDialog({
           <Settings className="mr-1.5 h-4 w-4" /> Ajustes
         </Button>
       </DialogTrigger>
-      <DialogContent className="glass-strong flex h-[88vh] w-[95vw] max-w-[1400px] flex-col overflow-hidden p-5 sm:max-w-[1400px]">
+      <DialogContent
+        className="glass-strong w-[95vw] max-w-[1400px] overflow-hidden p-5"
+        style={{ height: `${Math.round(window.innerHeight * 0.88)}px`, maxHeight: `${Math.round(window.innerHeight * 0.88)}px`, minHeight: "500px", display: "flex", flexDirection: "column", position: "fixed", top: "6vh", left: "0", right: "0", margin: "0 auto", translate: "none", transform: "none" }}
+      >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Configurações do evento</DialogTitle>
         </DialogHeader>
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto scroll-mac lg:grid-cols-[minmax(0,420px)_1fr]">
-          {/* Coluna de configurações */}
-          <div className="space-y-5 py-1">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,440px)_1fr]">
+          {/* Coluna de configurações (rolável) */}
+          <div className="space-y-4 overflow-y-auto scroll-mac pr-2">
             {/* Identificação */}
             <section className="space-y-3">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Identificação</h4>
@@ -241,77 +258,273 @@ function EventSettingsDialog({
             )}
           </section>
 
-          {/* Aparência */}
-          <section className="space-y-3 border-t border-border/60 pt-4">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aparência do certificado</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Fonte</Label>
-                <FontSelect
-                  value={evento.appearance.fontName}
-                  onChange={(id) =>
-                    onUpdate(evento.id, { appearance: { ...evento.appearance, fontName: id } })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label>Tamanho</Label>
-                  <span className="text-xs text-muted-foreground">{evento.appearance.fontSize} pt</span>
+          {/* Aparência — collapsible */}
+          <Collapsible defaultOpen={true}>
+            <CollapsibleTrigger className="flex w-full items-center gap-2 border-t border-border/60 pt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronDown className="h-3.5 w-3.5 [[data-state=open]>&]:rotate-180 transition-transform" />
+              Aparência do certificado
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-4 pt-3">
+                {/* Linha 1: Fonte + Tamanho */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Fonte</Label>
+                    <FontSelect
+                      value={evento.appearance.fontName}
+                      onChange={(id) => onUpdate(evento.id, { appearance: { ...evento.appearance, fontName: id } })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label>Tamanho</Label>
+                      <span className="text-xs text-muted-foreground">{evento.appearance.fontSize} pt</span>
+                    </div>
+                    <Slider
+                      value={[evento.appearance.fontSize]}
+                      min={20} max={120} step={1}
+                      onValueChange={(v) => onUpdate(evento.id, { appearance: { ...evento.appearance, fontSize: v[0] } })}
+                    />
+                  </div>
                 </div>
-                <Slider
-                  value={[evento.appearance.fontSize]}
-                  min={20}
-                  max={120}
-                  step={1}
-                  onValueChange={(v) =>
-                    onUpdate(evento.id, { appearance: { ...evento.appearance, fontSize: v[0] } })
-                  }
-                />
+
+                {/* Posição do texto — sistema centrado (0 = centro absoluto da imagem) */}
+                <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Posição do texto</span>
+                    <span className="text-[10px] text-muted-foreground/80">0 = centro da imagem</span>
+                  </div>
+                  <LabeledSlider label="Horizontal (X)" value={evento.appearance.posX} min={-1000} max={1000} step={5} suffix=" px"
+                    onValueChange={(v) => onUpdate(evento.id, { appearance: { ...evento.appearance, posX: v } })}
+                  />
+                  <LabeledSlider label="Vertical (Y)" value={evento.appearance.posY} min={-700} max={700} step={5} suffix=" px"
+                    hint="Delta do centro até o topo do bloco de texto (texto desce a partir daí)."
+                    onValueChange={(v) => onUpdate(evento.id, { appearance: { ...evento.appearance, posY: v } })}
+                  />
+                  <LabeledSlider label="Largura do bloco" value={evento.appearance.textWidth ?? 1500} min={0} max={2000} step={10} suffix=" px"
+                    hint="Largura total do bloco de texto, centrada em (centroX + posX). 0 = concentrado no centro."
+                    onValueChange={(v) => onUpdate(evento.id, { appearance: { ...evento.appearance, textWidth: v } })}
+                  />
+                </div>
+
+                {/* Itálico */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="s-italic" checked={evento.appearance.useItalic}
+                    onCheckedChange={(v) => onUpdate(evento.id, { appearance: { ...evento.appearance, useItalic: Boolean(v) } })}
+                  />
+                  <Label htmlFor="s-italic" className="cursor-pointer">Itálico no nome do evento/trabalho</Label>
+                </div>
+
+                {/* Cor + Espaçamento + Altura linha */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Cor da fonte</Label>
+                    <div className="flex items-center gap-2">
+                      <input type="color" value={fontColor}
+                        onChange={(e) => onUpdate(evento.id, { appearance: { ...evento.appearance, fontColor: e.target.value } })}
+                        className="h-8 w-12 cursor-pointer rounded border border-border"
+                      />
+                      <Input value={fontColor} className="font-mono text-xs"
+                        onChange={(e) => onUpdate(evento.id, { appearance: { ...evento.appearance, fontColor: e.target.value } })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Espaçamento</Label>
+                    <Input type="number" min={-5} max={20} step={0.5} value={letterSpacing}
+                      onChange={(e) => onUpdate(evento.id, { appearance: { ...evento.appearance, letterSpacing: Number(e.target.value) } })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Altura linha</Label>
+                    <Input type="number" min={1} max={3} step={0.1} value={lineHeight}
+                      onChange={(e) => onUpdate(evento.id, { appearance: { ...evento.appearance, lineHeight: Number(e.target.value) } })}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Posição X</Label>
-                <Input
-                  type="number"
-                  value={evento.appearance.posX}
-                  onChange={(e) =>
-                    onUpdate(evento.id, { appearance: { ...evento.appearance, posX: Number(e.target.value) } })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Posição Y</Label>
-                <Input
-                  type="number"
-                  value={evento.appearance.posY}
-                  onChange={(e) =>
-                    onUpdate(evento.id, { appearance: { ...evento.appearance, posY: Number(e.target.value) } })
-                  }
-                />
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Assinatura digital — collapsible com toggle */}
+          <Collapsible defaultOpen={evento.signature.useSignature}>
+            <div className="flex items-center justify-between border-t border-border/60 pt-4">
+              <CollapsibleTrigger className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors">
+                <ChevronDown className="h-3.5 w-3.5 [[data-state=open]>&]:rotate-180 transition-transform" />
+                Assinatura Digital
+              </CollapsibleTrigger>
               <Checkbox
-                id="s-italic"
-                checked={evento.appearance.useItalic}
+                checked={evento.signature.useSignature}
                 onCheckedChange={(v) =>
-                  onUpdate(evento.id, { appearance: { ...evento.appearance, useItalic: Boolean(v) } })
+                  onUpdate(evento.id, { signature: { ...evento.signature, useSignature: Boolean(v) } })
                 }
               />
-              <Label htmlFor="s-italic" className="cursor-pointer">Itálico no nome do evento/trabalho</Label>
             </div>
-          </section>
+            <CollapsibleContent>
+              <div className="space-y-3 pt-3">
+                {evento.signature.useSignature ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer">
+                        <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent">
+                          <Upload className="h-3.5 w-3.5" /> Carregar assinatura
+                        </span>
+                        <input type="file" accept="image/png,image/jpeg" className="hidden"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (f) {
+                              const reader = new FileReader();
+                              reader.onload = () => onUpdate(evento.id, { signature: { ...evento.signature, signatureName: f.name, signatureDataUrl: reader.result as string } });
+                              reader.readAsDataURL(f);
+                            }
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      {evento.signature.signatureDataUrl && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => onUpdate(evento.id, { signature: { ...evento.signature, signatureName: "", signatureDataUrl: null } })}>
+                          <X className="mr-1 h-3.5 w-3.5" /> Remover
+                        </Button>
+                      )}
+                    </div>
+                    {evento.signature.signatureDataUrl && (
+                      <div className="rounded-md border border-border bg-muted/30 p-2">
+                        <img src={evento.signature.signatureDataUrl} alt="Assinatura" className="max-h-16 object-contain" />
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Tamanho</Label>
+                        <span className="text-xs text-muted-foreground">{evento.signature.signatureSize} px</span>
+                      </div>
+                      <Slider value={[evento.signature.signatureSize]} min={50} max={1000} step={10}
+                        onValueChange={(v) => onUpdate(evento.id, { signature: { ...evento.signature, signatureSize: v[0] } })}
+                      />
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Posição da assinatura</span>
+                        <span className="text-[10px] text-muted-foreground/80">0 = centro da imagem</span>
+                      </div>
+                      <LabeledSlider label="Horizontal (X)" value={evento.signature.signaturePosX} min={-1000} max={1000} step={5} suffix=" px"
+                        onValueChange={(v) => onUpdate(evento.id, { signature: { ...evento.signature, signaturePosX: v } })}
+                      />
+                      <LabeledSlider label="Vertical (Y)" value={evento.signature.signaturePosY} min={-700} max={700} step={5} suffix=" px"
+                        onValueChange={(v) => onUpdate(evento.id, { signature: { ...evento.signature, signaturePosY: v } })}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Arraste a assinatura no preview para reposicioná-la.</p>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Habilite o toggle acima para configurar a assinatura.</p>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* QR Code — obrigatório (mas requer access key) */}
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger className="flex w-full items-center gap-2 border-t border-border/60 pt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronDown className="h-3.5 w-3.5 [[data-state=open]>&]:rotate-180 transition-transform" />
+              QR Code de Validação
+              {!hasAccessKey && <Lock className="ml-auto h-3 w-3 text-muted-foreground/50" />}
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-3 pt-3">
+                {!hasAccessKey && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Lock className="h-3 w-3" />
+                      QR Code desativado
+                    </div>
+                    <p className="mt-1 text-amber-600/80 dark:text-amber-400/80">
+                      Configure uma chave de acesso em Configurações → Validação Online para ativar o QR code.
+                    </p>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label>Estilo</Label>
+                  <Select value={qr.style ?? "rounded"}
+                    onValueChange={(v) => onUpdate(evento.id, { qrCode: { ...qrDefaults, ...qr, style: v as "classic" | "rounded" | "dots" | "minimal" } })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="classic">Clássico (quadrados)</SelectItem>
+                      <SelectItem value="rounded">Arredondado</SelectItem>
+                      <SelectItem value="dots">Pontos</SelectItem>
+                      <SelectItem value="minimal">Minimalista</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Tamanho</Label>
+                    <span className="text-xs text-muted-foreground">{qr.size ?? 130} px</span>
+                  </div>
+                  <Slider value={[qr.size ?? 130]} min={60} max={400} step={10}
+                    onValueChange={(v) => onUpdate(evento.id, { qrCode: { ...qrDefaults, ...qr, size: v[0] } })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Cor dos módulos</Label>
+                    <div className="flex items-center gap-2">
+                      <input type="color" value={qr.fgColor ?? "#1a1612"}
+                        onChange={(e) => onUpdate(evento.id, { qrCode: { ...qrDefaults, ...qr, fgColor: e.target.value } })}
+                        className="h-8 w-12 cursor-pointer rounded border border-border"
+                      />
+                      <Input value={qr.fgColor ?? "#1a1612"} className="font-mono text-xs"
+                        onChange={(e) => onUpdate(evento.id, { qrCode: { ...qrDefaults, ...qr, fgColor: e.target.value } })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Cor de fundo</Label>
+                    <div className="flex items-center gap-2">
+                      <input type="color" value={qr.bgColor ?? "#ffffff"}
+                        onChange={(e) => onUpdate(evento.id, { qrCode: { ...qrDefaults, ...qr, bgColor: e.target.value } })}
+                        className="h-8 w-12 cursor-pointer rounded border border-border"
+                      />
+                      <Input value={qr.bgColor ?? "#ffffff"} className="font-mono text-xs"
+                        onChange={(e) => onUpdate(evento.id, { qrCode: { ...qrDefaults, ...qr, bgColor: e.target.value } })}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Posição do QR code</span>
+                    <span className="text-[10px] text-muted-foreground/80">0 = centro da imagem</span>
+                  </div>
+                  <LabeledSlider label="Horizontal (X)" value={qr.posX ?? 830} min={-1000} max={1000} step={5} suffix=" px"
+                    onValueChange={(v) => onUpdate(evento.id, { qrCode: { ...qrDefaults, ...qr, posX: v } })}
+                  />
+                  <LabeledSlider label="Vertical (Y)" value={qr.posY ?? 537} min={-700} max={700} step={5} suffix=" px"
+                    onValueChange={(v) => onUpdate(evento.id, { qrCode: { ...qrDefaults, ...qr, posY: v } })}
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="s-qr-label" checked={qr.showLabel ?? true}
+                    onCheckedChange={(v) => onUpdate(evento.id, { qrCode: { ...qrDefaults, ...qr, showLabel: Boolean(v) } })}
+                  />
+                  <Label htmlFor="s-qr-label" className="cursor-pointer">Mostrar texto "Valide em" abaixo do QR</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">Arraste o QR code no preview para reposicioná-lo.</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
           </div>
 
           {/* Coluna de preview ao vivo */}
-          <div className="flex min-h-0 flex-col">
+          <div className="flex min-h-0 flex-col overflow-hidden">
             <h4 className="mb-2 flex-shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Pré-visualização
             </h4>
-            <div className="flex min-h-0 flex-1 flex-col">
-              <CertificatePreviewMini evento={evento} />
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <CertificatePreviewMini
+                evento={evento}
+                onUpdate={(patch) => onUpdate(evento.id, patch)}
+              />
             </div>
             <p className="mt-2 flex-shrink-0 text-xs text-muted-foreground">
               O preview reage às configurações em tempo real. Use o primeiro participante (ou placeholder) como referência.
